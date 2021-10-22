@@ -1,16 +1,7 @@
-# darg_game
+# color_sort
 
-A new Flutter project.
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
-
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+B站UP主视频颜色排序游戏的相关代码。
+视频地址：
+* [Flutter 教程 Key-5 实例（上）做个颜色排序的游戏](https://www.bilibili.com/video/BV1uA411v7tk)
+* [Flutter 教程 Key-6 实例（中）实战中 LocalKey 的使用](https://www.bilibili.com/video/BV1ia4y1a7Wx)
+* [Flutter 教程 Key-7 实例（下）：实战中 GlobalKey 的使用](https://www.bilibili.com/video/BV1QD4y1m73g)
