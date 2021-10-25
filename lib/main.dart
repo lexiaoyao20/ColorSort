@@ -48,17 +48,19 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final boxes = [
-    Box(color: Colors.blue[100]!, key: UniqueKey()),
-    Box(color: Colors.blue[300]!, key: UniqueKey()),
-    Box(color: Colors.blue[500]!, key: UniqueKey()),
-    Box(color: Colors.blue[700]!, key: UniqueKey()),
-    Box(color: Colors.blue[900]!, key: UniqueKey()),
+  final _colors = [
+    Colors.blue[100]!,
+    Colors.blue[300]!,
+    Colors.blue[500]!,
+    Colors.blue[700]!,
+    Colors.blue[900]!,
   ];
+
+  var _slot = 0;
 
   _shuffle() {
     setState(() {
-      boxes.shuffle();
+      _colors.shuffle();
     });
   }
 
@@ -76,11 +78,40 @@ class _MyHomePageState extends State<MyHomePage> {
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Row(
-          children: boxes,
+      body: Listener(
+        onPointerMove: (event) {
+          final y = event.position.dy;
+          if (y > (_slot + 1) * Box.height) {
+            if (_slot == _colors.length - 1) return;
+            setState(() {
+              final c = _colors[_slot];
+              _colors[_slot] = _colors[_slot + 1];
+              _colors[_slot + 1] = c;
+              _slot++;
+            });
+          } else if (y < _slot * Box.height) {
+            if (_slot == 0) return;
+            setState(() {
+              final c = _colors[_slot];
+              _colors[_slot] = _colors[_slot - 1];
+              _colors[_slot - 1] = c;
+              _slot--;
+            });
+          }
+        },
+        child: Stack(
+          children: List.generate(_colors.length, (i) {
+            return Box(
+              x: 70,
+              y: i * Box.height,
+              onDrag: (Color color) {
+                final index = _colors.indexOf(color);
+                _slot = index;
+              },
+              color: _colors[i],
+              key: ValueKey(_colors[i]),
+            );
+          }),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -93,27 +124,45 @@ class _MyHomePageState extends State<MyHomePage> {
 }
 
 class Box extends StatelessWidget {
+  static const width = 250.0;
+  static const height = 50.0;
+  static const margin = 2.0;
+  final Function(Color color) onDrag;
+
   final Color color;
-  const Box({Key? key, required this.color}) : super(key: key);
+  final double x, y;
+
+  late final container = Container(
+    width: width - margin * 2,
+    height: height - margin * 2,
+    decoration: BoxDecoration(
+      color: color,
+      borderRadius: BorderRadius.circular(8.0),
+    ),
+  );
+
+  Box(
+      {Key? key,
+      required this.x,
+      required this.y,
+      required this.onDrag,
+      required this.color})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Draggable(
-      child: Container(
-        margin: const EdgeInsets.all(8.0),
-        width: 50,
-        height: 50,
-        color: color,
-      ),
-      feedback: Container(
-          margin: const EdgeInsets.all(8.0),
-          width: 50,
-          height: 50,
-          color: color),
-      childWhenDragging: Container(
-        margin: const EdgeInsets.all(8.0),
-        width: 50,
-        height: 50,
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 200),
+      top: y,
+      left: x,
+      child: Draggable(
+        onDragStarted: () => onDrag(color),
+        child: container,
+        feedback: container,
+        childWhenDragging: Visibility(
+          visible: false,
+          child: container,
+        ),
       ),
     );
   }
