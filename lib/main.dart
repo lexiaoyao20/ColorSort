@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 void main() {
@@ -48,20 +50,37 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final _colors = [
-    Colors.blue[100]!,
-    Colors.blue[300]!,
-    Colors.blue[500]!,
-    Colors.blue[700]!,
-    Colors.blue[900]!,
-  ];
+  var _color = Colors.blue;
+  List<Color> _colors = [];
 
   var _slot = 0;
+  final _globalKey = GlobalKey();
+  double _offset = 0;
 
   _shuffle() {
     setState(() {
+      _color = Colors.primaries[Random().nextInt(Colors.primaries.length)];
+      _colors = List.generate(8, (index) => _color[(index + 1) * 100]!);
       _colors.shuffle();
     });
+  }
+
+  _checkWindCondition() {
+    List<double> lum = _colors.map((e) => e.computeLuminance()).toList();
+    bool success = true;
+    for (int i = 0; i < lum.length - 1; i++) {
+      if (lum[i] > lum[i + 1]) {
+        success = false;
+        break;
+      }
+    }
+    print(success ? "win" : "");
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _shuffle();
   }
 
   @override
@@ -77,47 +96,83 @@ class _MyHomePageState extends State<MyHomePage> {
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
+        actions: [
+          IconButton(
+            onPressed: _shuffle,
+            icon: const Icon(Icons.refresh),
+          )
+        ],
       ),
-      body: Listener(
-        onPointerMove: (event) {
-          final y = event.position.dy;
-          if (y > (_slot + 1) * Box.height) {
-            if (_slot == _colors.length - 1) return;
-            setState(() {
-              final c = _colors[_slot];
-              _colors[_slot] = _colors[_slot + 1];
-              _colors[_slot + 1] = c;
-              _slot++;
-            });
-          } else if (y < _slot * Box.height) {
-            if (_slot == 0) return;
-            setState(() {
-              final c = _colors[_slot];
-              _colors[_slot] = _colors[_slot - 1];
-              _colors[_slot - 1] = c;
-              _slot--;
-            });
-          }
-        },
-        child: Stack(
-          children: List.generate(_colors.length, (i) {
-            return Box(
-              x: 70,
-              y: i * Box.height,
-              onDrag: (Color color) {
-                final index = _colors.indexOf(color);
-                _slot = index;
-              },
-              color: _colors[i],
-              key: ValueKey(_colors[i]),
-            );
-          }),
+      body: Center(
+        child: Column(
+          children: [
+            const SizedBox(height: 32),
+            const Text(
+              "Welcome:",
+              style: TextStyle(fontSize: 32),
+            ),
+            const SizedBox(height: 32),
+            Container(
+              child: const Icon(
+                Icons.lock_outline,
+                color: Colors.white,
+              ),
+              width: Box.width - Box.margin * 2,
+              height: Box.height - Box.margin * 2,
+              decoration: BoxDecoration(
+                color: _color,
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+            ),
+            const SizedBox(height: Box.margin * 2),
+            Expanded(
+              child: Listener(
+                onPointerMove: (event) {
+                  final y = event.position.dy - _offset;
+                  if (y > (_slot + 1) * Box.height) {
+                    if (_slot == _colors.length - 1) return;
+                    setState(() {
+                      final c = _colors[_slot];
+                      _colors[_slot] = _colors[_slot + 1];
+                      _colors[_slot + 1] = c;
+                      _slot++;
+                    });
+                  } else if (y < _slot * Box.height) {
+                    if (_slot == 0) return;
+                    setState(() {
+                      final c = _colors[_slot];
+                      _colors[_slot] = _colors[_slot - 1];
+                      _colors[_slot - 1] = c;
+                      _slot--;
+                    });
+                  }
+                },
+                child: SizedBox(
+                  width: Box.width,
+                  child: Stack(
+                    key: _globalKey,
+                    children: List.generate(_colors.length, (i) {
+                      return Box(
+                        x: 0,
+                        y: i * Box.height,
+                        onDrag: (Color color) {
+                          final index = _colors.indexOf(color);
+                          final renderBox = (_globalKey.currentContext
+                              ?.findRenderObject() as RenderBox);
+                          _offset = renderBox.localToGlobal(Offset.zero).dy;
+                          print("on dart $index, app bar height = $_offset");
+                          _slot = index;
+                        },
+                        onEnd: _checkWindCondition,
+                        color: _colors[i],
+                      );
+                    }),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _shuffle,
-        tooltip: 'Increment',
-        child: const Icon(Icons.refresh),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
@@ -128,6 +183,7 @@ class Box extends StatelessWidget {
   static const height = 50.0;
   static const margin = 2.0;
   final Function(Color color) onDrag;
+  final Function() onEnd;
 
   final Color color;
   final double x, y;
@@ -142,12 +198,12 @@ class Box extends StatelessWidget {
   );
 
   Box(
-      {Key? key,
-      required this.x,
+      {required this.x,
       required this.y,
       required this.onDrag,
+      required this.onEnd,
       required this.color})
-      : super(key: key);
+      : super(key: ValueKey(color));
 
   @override
   Widget build(BuildContext context) {
@@ -157,6 +213,7 @@ class Box extends StatelessWidget {
       left: x,
       child: Draggable(
         onDragStarted: () => onDrag(color),
+        onDragEnd: (detail) => onEnd(),
         child: container,
         feedback: container,
         childWhenDragging: Visibility(
